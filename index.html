@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#9B060C">
+<title>Spidey Toy</title>
+<link rel="icon" href="artwork/icon.svg">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- 1. Connect screen (original: intro / connect flow) -->
+  <section id="splash" class="screen active">
+    <div class="intro-art"></div>
+    <div class="splash-content">
+      <img class="logo" src="artwork/v3_marvel_logo.svg" alt="Marvel">
+      <h1>Spider-Man<br><span>Interactive Super Hero</span></h1>
+      <div class="bubble"><p>Turn on your toy, then press Connect.</p>
+        <small>(Hint: The glowing light on the foot indicates that the toy is on.)</small></div>
+      <button class="btn big" id="btnConnect">Connect Smart Toy</button>
+      <p class="err" id="splashErr" hidden></p>
+      <button class="link" id="btnAny">Can't see your toy? Show all Bluetooth devices</button>
+      <button class="link" id="btnDemo">Look around without a toy</button>
+      <img class="logo sphero" src="artwork/v3_sphero_logo.svg" alt="Sphero">
+    </div>
+  </section>
+
+  <!-- 2. Home dashboard (original: Hang Out / Team Up / Fight Villains) -->
+  <section id="home" class="screen">
+    <header class="top">
+      <button class="icon-btn" id="btnHelp" aria-label="Help"><img src="artwork/v4_help.svg" alt=""></button>
+      <h2>Spidey</h2>
+      <button class="icon-btn" id="btnSettings" aria-label="Settings"><img src="artwork/v4_settings.svg" alt=""></button>
+    </header>
+    <div class="body hex">
+      <div class="hero">
+        <img id="heroImg" src="artwork/v4_spidy_power_on_color.svg" alt="">
+        <div class="status">
+          <span id="connDot" class="dot"></span><span id="connText">Connected</span>
+          <span id="battery" class="battery" hidden></span>
+        </div>
+      </div>
+      <div class="bubble black" id="nowPlaying"><p id="nowPlayingText">Your toy is waiting</p></div>
+
+      <div class="modes" id="modes"></div>
+
+      <div class="panel row guard">
+        <div><strong>Guard Mode</strong><small>Spidey watches the room and sounds the alarm.</small></div>
+        <label class="switch"><input type="checkbox" id="guard"><span></span></label>
+      </div>
+
+      <div class="panel vol">
+        <img src="artwork/v4_volume_mute.svg" alt="Quiet">
+        <input type="range" id="volume" min="0" max="100" value="60" aria-label="Toy volume level">
+        <img src="artwork/v4_volume_full.svg" alt="Loud">
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. Activity list for a mode -->
+  <section id="list" class="screen">
+    <header class="top red">
+      <button class="icon-btn" data-back aria-label="Back"><img src="artwork/v4_back.svg" alt=""></button>
+      <h2 id="listTitle"></h2><span class="spacer"></span>
+    </header>
+    <div class="body hex">
+      <p class="hint">Click an icon to launch that activity.</p>
+      <div class="activities" id="activities"></div>
+    </div>
+  </section>
+
+  <!-- 4. Settings -->
+  <section id="settings" class="screen">
+    <header class="top red">
+      <button class="icon-btn" data-back aria-label="Back"><img src="artwork/v4_back.svg" alt=""></button>
+      <h2>Settings</h2><span class="spacer"></span>
+    </header>
+    <div class="body hex">
+      <div class="panel"><strong>Your toy</strong>
+        <dl class="kv" id="toyInfo"></dl>
+        <div class="btnrow">
+          <button class="btn" id="btnBeep">Make it beep</button>
+          <button class="btn alt" id="btnBatt">Check battery</button>
+        </div>
+      </div>
+      <div class="panel"><strong>Your hero's name</strong>
+        <small>Pick two words for the name and two for the power. (Same word lists as the original app.)</small>
+        <div class="btnrow"><select id="nameA" aria-label="First word"></select><select id="nameB" aria-label="Second word"></select></div>
+        <small>Power (second step of the original setup):</small>
+        <div class="btnrow"><select id="powA" aria-label="First power word"></select><select id="powB" aria-label="Second power word"></select></div>
+        <div class="btnrow"><button class="btn alt" id="namePlay">Hear it</button><button class="btn" id="nameSave">Save name</button></div>
+        <small id="nameMsg"></small>
+      </div>
+      <div class="panel"><strong>Toy Wi-Fi</strong>
+        <small>Entering your Wi-Fi password lets the toy reach the internet for new activities and updates.</small>
+        <label>Network name<input id="ssid" autocomplete="off"></label>
+        <label>Password<input id="pwd" type="password" autocomplete="off"></label>
+        <div class="btnrow"><button class="btn" id="btnWifi">Send to toy</button></div>
+        <small id="wifiMsg"></small>
+      </div>
+      <div class="panel"><strong>Put the toy to sleep</strong>
+        <div class="btnrow"><button class="btn alt" id="btnSleep">Sleep</button><button class="btn alt" id="btnDisc">Disconnect</button></div>
+      </div>
+      <p class="version" id="version">Spidey Toy web · unofficial fan revival · v0.1</p>
+    </div>
+  </section>
+
+  <!-- 5. Help -->
+  <section id="help" class="screen">
+    <header class="top red">
+      <button class="icon-btn" data-back aria-label="Back"><img src="artwork/v4_back.svg" alt=""></button>
+      <h2>Help</h2><span class="spacer"></span>
+    </header>
+    <div class="body hex">
+      <div class="panel"><strong>Connecting</strong>
+        <p>Use Chrome or Edge, with Bluetooth turned on. Turn the toy on (the foot light glows) and keep it close. Press <em>Connect Smart Toy</em> and pick the device whose name starts with <b>ST</b>.</p></div>
+      <div class="panel"><strong>Playing</strong>
+        <p>Pick <em>Hang Out</em>, <em>Team Up</em> or <em>Fight Villains</em>, then click an activity.</p></div>
+      <div class="panel"><strong>Guard Mode</strong><p>Switch it on and Spidey keeps watch until you switch it off.</p></div>
+      <div class="panel"><strong>Not working?</strong>
+        <p>Turn the toy off and on, close other apps that may be connected to it, and try again. Some activities needed the old Sphero server and may be limited.</p></div>
+    </div>
+  </section>
+
+  <!-- 6. Advanced (hidden: tap the version line in Settings five times) -->
+  <section id="advanced" class="screen">
+    <header class="top">
+      <button class="icon-btn" data-back aria-label="Back"><img src="artwork/v4_back.svg" alt=""></button>
+      <h2>Advanced</h2><span class="spacer"></span>
+    </header>
+    <div class="body">
+      <div class="panel"><strong>Send any command</strong>
+        <small>For tinkerers. Sends one message to the toy exactly as the original app would.</small>
+        <div class="btnrow"><select id="opSel"></select><input id="opDt" placeholder='DT, e.g. {"VOL":"0.5"}'><button class="btn" id="opSend">Send</button></div>
+      </div>
+      <div class="panel"><strong>Launch by handle</strong>
+        <small>The 83 menu / voice-command handles the original app knew about.</small>
+        <div class="btnrow"><select id="handleSel"></select><button class="btn" id="handleGo">Play</button><button class="btn alt" id="handleStop">Stop</button></div>
+      </div>
+      <div class="panel"><strong>Launch any pack</strong>
+        <div class="btnrow"><select id="packSel"></select><button class="btn" id="packGo">Play</button><button class="btn alt" id="packStop">Stop</button></div>
+      </div>
+      <div class="panel"><strong>Toy controls</strong>
+        <div class="btnrow">
+          <button class="btn alt" id="aTz">Sync time zone</button>
+          <button class="btn alt" id="aInfo">Refresh toy info</button>
+          <button class="btn alt" id="aPair">Pairing handshake (send TSI)</button>
+          <button class="btn alt" id="aStats">Toy stats (read-only)</button>
+          <button class="btn alt" id="aSetup">Setup state (read-only)</button>
+          <button class="btn alt" id="aPull">Pull profile from toy</button>
+          <button class="btn alt" id="aScan">Scan Wi-Fi</button>
+          <button class="btn alt" id="aUpd">Check for update</button>
+          <button class="btn alt" id="aForget">Forget Wi-Fi</button>
+          <button class="btn alt" id="aShut">Shut down</button>
+        </div>
+        <label class="inline"><input type="checkbox" id="aSens"> Sensors on</label>
+        <label class="inline"><input type="checkbox" id="aVolCtl"> Voice volume control</label>
+        <label class="inline"><input type="checkbox" id="aAcc" checked> Send ACC field</label>
+        <label class="inline">Reconnect after (s, 0 = never) <input id="aRcDelay" type="number" min="0" max="300" value="6" style="width:5em"></label>
+        <label class="inline">ACC value <input id="aAccVal" value="cust_spideyweb" size="28" autocomplete="off"></label>
+      </div>
+      <div class="panel"><strong>Toy profile</strong>
+        <small>Press <em>Pull profile from toy</em> and wait about 30 seconds. Sends the time, then Skip Setup, then Get Profile (as the earlier Android tool did).</small>
+        <pre id="profileOut">(nothing yet)</pre>
+      </div>
+      <div class="panel"><strong>Log</strong>
+        <label class="inline"><input type="checkbox" id="rawLog"> show raw Bluetooth frames</label>
+        <button class="btn alt" id="clearLog">Clear</button>
+        <pre id="log"></pre>
+        <button class="btn alt" id="copyLog">Copy log</button>
+      </div>
+    </div>
+  </section>
+
+</div>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
