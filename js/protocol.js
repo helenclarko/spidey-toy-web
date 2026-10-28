@@ -138,6 +138,10 @@ export class Toy extends EventTarget {
       if (!ok) c.removeEventListener('characteristicvaluechanged', onChange);
     }
     if (!this.notifying) { this.emit('diag', 'notifications unavailable, polling the reply channel instead'); this._startPolling(); }
+    // The toy has no standard notification switch (0x2902), which is why startNotifications says "Not supported".
+    // The original app (and the Android tool) instead read + write the toy's CUSTOM descriptor (char UUID, last byte +1)
+    // with ENABLE_NOTIFICATION (01 00), then wrote "1" to the ack channel once ("post notification"). Do the same.
+    await this._legacySubscribe(byUuid);
     this.connected = true;
     if (!isReconnect) this.emit('connected', { name: this.device.name });
     // the app's first call after discovery; the toy answers with INFO
@@ -152,6 +156,24 @@ export class Toy extends EventTarget {
       this.emit('diag', 'no INFO yet, asking again');
       await this.send('GET_TOY_INFO', { CIA: '[]' });   // _writeFrames waits for any reply in progress to finish first
     }
+    // Ask for the toy's stats right away: they carry ACC, the account id the toy is registered under, which profile
+    // writes need. (The toy only answers this while it has no cloud route, e.g. no Wi-Fi saved; otherwise it stays silent.)
+    // the real app sends CSN:false on its first stats request of a connection and CSN:true afterwards (mobile/d/a.java rT)
+    if (this.connected) this.send(62, { CSN: false, SP: true });
+  }
+  async _legacySubscribe(byUuid) {
+    const pairs = [[CH_NOTIFY, '740563d5-3736-4033-87b5-029c38ccc894'], [CH_ACK, '1eaebabd-4ce8-48c3-a1fc-fbe733e1e6eb'], [CH_WRITE, '81e4c615-62f2-48b6-8be4-96dcd0801bb8']];
+    for (const [cu, du] of pairs) {
+      const c = byUuid[cu]; if (!c) continue;
+      try {
+        const d = await c.getDescriptor(du);
+        try { await d.readValue(); } catch (e) { this.emit('diag', `descriptor read ${du}: ${e.message}`); }
+        await d.writeValue(new Uint8Array([1, 0]));
+        this.emit('diag', 'enabled custom descriptor ' + du);
+      } catch (e) { this.emit('diag', `custom descriptor ${du}: ${e.message}`); }
+    }
+    try { await this.chAck.writeValue(new TextEncoder().encode('1')); this.emit('diag', 'post-notification "1" sent'); }
+    catch (e) { this.emit('diag', 'post-notification failed: ' + e.message); }
   }
   // Fallback when the OS won't enable notifications: read the reply channel repeatedly and
   // feed any new value through the same path as a notification.

@@ -63,6 +63,7 @@ function attach(t) {
     log('inf', 'disconnected');
     $('#connDot').classList.remove('on'); $('#connText').textContent = 'Not connected';
     toast('Lost connection with the toy.');
+    stopSetupPoll(); setup.active = false;
     setPlaying(null);
     stack.length = 1; show('splash', { push: false });
   });
@@ -76,9 +77,16 @@ function attach(t) {
     $('#connDot').classList.add('on'); $('#connText').textContent = 'Connected';
   });
   t.addEventListener('diag', e => { console.log('[toy]', e.detail); log('inf', e.detail); diagLines.push(e.detail); });
-  t.addEventListener('tx', e => log('tx', `> ${e.detail.op}  ${e.detail.json}`));
+  t.addEventListener('tx', e => log('tx', `> ${e.detail.op}  ${String(e.detail.json).replace(/(\\"PWD\\":\\")(?:[^"\\]|\\.)*?(\\")/, '$1<hidden>$2')}`));
   t.addEventListener('message', e => {
     const { name, dt } = e.detail;
+    setupOnMessage(name, dt);
+    if (name === 'TOY_STATS' && dt && dt.ACC) {
+      t.acc = String(dt.ACC);
+      const box = $('#aAccVal'); if (box) box.value = t.acc;
+      log('inf', 'ACC read from the toy: ' + t.acc + ' (used for name/power writes)');
+      try { localStorage.toyAcc = t.acc; } catch { /* storage unavailable */ }
+    }
     if (name === 'UPDATE_PROFILE' || name === 'UPDATE_SKIMMED_PROFILE') {
       const out = $('#profileOut');
       let txt = typeof dt === 'string' ? dt : JSON.stringify(dt, null, 1);
@@ -88,10 +96,10 @@ function attach(t) {
 ${txt}`;
     }
   });
-  t.addEventListener('rx', e => log('', `< ${e.detail.op || '?'}  ${e.detail.json}`));
+  t.addEventListener('rx', e => log('', `< ${e.detail.op || '?'}  ${hideToken(String(e.detail.json))}`));
   t.addEventListener('raw', e => { if ($('#rawLog').checked) log('inf', 'raw< ' + e.detail); });
   t.addEventListener('error', e => log('err', e.detail.message || String(e.detail)));
-  t.addEventListener('info', e => { applyInfo(e.detail); renderToyInfo(); });
+  t.addEventListener('info', e => { applyInfo(e.detail); renderToyInfo(); setupOnInfo(e.detail); });
   t.addEventListener('battery', e => showBattery(e.detail));
 }
 
@@ -183,6 +191,13 @@ async function toggleActivity(a) {
 // hero name: word lists are the audio files the original app shipped (assets/names/first|second)
 // Only words that have a spoken '_first_second.mp3' in the activity packs (checked against the server file lists):
 // the app also listed Crimson, Iron, Night, War and Avenger, but no pack carries audio for them.
+// TOY_STATS carries the toy's login token (ATOK): keep it out of the log you may paste somewhere
+function hideToken(j) {
+  const a = j.indexOf('ATOK'); if (a < 0) return j;
+  const col = j.indexOf(':', a), b = j.indexOf('ACC', a), c = b < 0 ? -1 : j.lastIndexOf(',', b);
+  return col < 0 || c < col ? j : j.slice(0, col + 1) + '<hidden>' + j.slice(c);
+}
+
 const NAMES_A = 'Amazing Battle Colossal Danger Doctor Frost Galactic Ghost Incredible Mech Midnight Mini Pyro Scarlet Sonic Spark Stealth Supreme Turbo Ultimate'.split(' ');
 const NAMES_B = 'Cat Dude Falcon Fury Hornet Hound Hunter Kid King Lady Machine Master Patriot Raptor Raven Saber Shark Striker Tiger Wolf'.split(' ');
 const POW_A = 'Acid Bionic Electric Explosive Flaming Freezing Indestructible Laser Magnetized Piercing Plasma Projectile Radioactive Rapid Shockwave Sticky Super Thunder Tremor Whirlwind'.split(' ');
@@ -214,6 +229,71 @@ $('#btnWifi').onclick = async () => {
   if (!p) return $('#wifiMsg').textContent = 'You must enter a password for the network.';
   await toy.joinWifi(s, p); $('#wifiMsg').textContent = 'The new Wi-Fi settings have been sent to your toy.';
 };
+// ---------- first-time setup ----------
+// A factory-state toy reports STM:true in INFO. Observed after a pin-hole reset: send Wi-Fi, the toy logs in and downloads
+// by itself, and INFO flips to STM:false (about 5 minutes). Replies other than INFO are not answered while it is online.
+const setup = { active: false, dismissed: false, poll: null, started: 0 };
+function setupStep(n) { document.querySelectorAll('#setup [data-step]').forEach(s => { s.hidden = +s.dataset.step !== n; }); }
+function setupMsg(t) { $('#setupMsg').textContent = t; }
+function stopSetupPoll() { clearInterval(setup.poll); setup.poll = null; }
+function startSetupPoll() {
+  stopSetupPoll(); setup.started = Date.now();
+  setup.poll = setInterval(() => {
+    if (!toy?.connected) return;
+    if (Date.now() - setup.started > 20 * 60000) { stopSetupPoll(); setupMsg('Still not finished after 20 minutes. Check the Wi-Fi password, then press "Enter it again".'); return; }
+    try { Promise.resolve(toy.send('GET_TOY_INFO', {})).catch(() => {}); } catch { /* not connected right now */ }
+  }, 12000);
+}
+function openSetup(info) {
+  setup.active = true; setup.dismissed = false;
+  $('#setupDone').hidden = true; setupMsg('');
+  if (info && info.STM === false && info.ICS !== 'ON') { setupStep(3); setupMsg('This toy already finished setup. You can still set its hero.'); }
+  else if (info && info.ICS === 'ON') { setupStep(2); setupMsg('The toy is online. Waiting for it to finish setting itself up...'); startSetupPoll(); }
+  else setupStep(1);
+  show('setup');
+}
+function closeSetup() {
+  stopSetupPoll(); setup.active = false; setup.dismissed = true;
+  stack.length = 1; show('home');
+}
+function setupOnInfo(i) {
+  if (!setup.active) { if (i.STM === true && !setup.dismissed && !demo) openSetup(i); return; }
+  if (i.STM === false && setup.poll) { stopSetupPoll(); setupStep(3); setupMsg('Setup is complete. Now pick your hero.'); }
+  else if (i.ICS === 'ON' && setup.poll) setupMsg('The toy is online and still setting itself up... (' + Math.round((Date.now() - setup.started) / 60000) + ' min)');
+}
+function setupOnMessage(name, dt) {
+  if (!setup.active) return;
+  if (name === 'SSID_CONNECTION_STATUS') {
+    if (dt && dt.ST === 'connected') { setupStep(2); setupMsg('Connected to Wi-Fi. Waiting for the toy to finish setting itself up...'); startSetupPoll(); }
+    else setupMsg('The toy could not join that network (' + ((dt && dt.ST) || 'unknown') + '). Check the name and password.');
+  } else if (name === 'NETWORK_CONNECTION_FAILURE') setupMsg('The toy could not join that network. Check the name and password.');
+}
+NAMES_A.forEach(w => $('#setupA').append(el('option', { value: w, textContent: w })));
+NAMES_B.forEach(w => $('#setupB').append(el('option', { value: w, textContent: w })));
+POW_A.forEach(w => $('#setupPA').append(el('option', { value: w, textContent: w })));
+POW_B.forEach(w => $('#setupPB').append(el('option', { value: w, textContent: w })));
+$('#setupA').value = 'Supreme'; $('#setupB').value = 'Tiger'; $('#setupPA').value = 'Piercing'; $('#setupPB').value = 'Arms';
+$('#setupWifi').onclick = async () => {
+  const s = $('#setupSsid').value.trim(), p = $('#setupPwd').value;
+  if (!s) return setupMsg('No network name is provided.');
+  if (!p) return setupMsg('You must enter a password for the network.');
+  setupMsg('Sending the Wi-Fi settings to the toy...');
+  try { await toy.joinWifi(s, p); setupMsg('Sent. Waiting for the toy to join the network...'); } catch { setupMsg('Cannot connect with the toy at the moment.'); }
+};
+$('#setupAgain').onclick = () => { stopSetupPoll(); setupStep(1); setupMsg(''); };
+$('#setupSave').onclick = async () => {
+  const a = $('#setupA').value, b = $('#setupB').value, c = $('#setupPA').value, d = $('#setupPB').value;
+  try {
+    setupMsg('Sending... this takes about 20 seconds.');
+    await toy.setHero(a, b, c, d);
+    try { localStorage.heroA = a; localStorage.heroB = b; localStorage.powA = c; localStorage.powB = d; } catch { /* storage unavailable */ }
+    setupMsg(`Sent: ${a} ${b}, ${c} ${d}. Ask Spidey "What's my name?" to check.`); $('#setupDone').hidden = false;
+  } catch { setupMsg('Cannot connect with the toy at the moment.'); }
+};
+$('#setupSkip').onclick = closeSetup;
+$('#setupDone').onclick = closeSetup;
+$('#btnSetup').onclick = () => openSetup(toy?.info);
+
 let taps = 0, tapTimer;
 $('#version').onclick = () => {
   clearTimeout(tapTimer); tapTimer = setTimeout(() => taps = 0, 1500);
@@ -248,6 +328,8 @@ $('#aPair').onclick = () => {
   toy.send('GET_TOY_INFO', { TSI: tsi, CIA: '[]' });   // the phone sends TSI once it knows one
 };
 $('#aPull').onclick = () => { $('#profileOut').textContent = 'Asking the toy... (about 30 s)'; toy.pullProfile(); };
+// exactly what the APK sends (mobile/d/a.java getProfileFromToy): op 105 with an empty DT; no time sync, no SKIP_SETUP
+$('#aPull2').onclick = () => { $('#profileOut').textContent = 'Asking the toy (GET_PROFILE only)... wait 30 s'; toy.getProfile(); };
 $('#aStats').onclick = () => toy.send(62, { CSN: true, SP: true });   // GET_TOY_STATS
 $('#aSetup').onclick = () => toy.send(66, '');                         // GET_SETUP_STATE
 $('#aScan').onclick = () => toy.scanWifi();
@@ -256,6 +338,7 @@ $('#aForget').onclick = () => toy.forgetWifi();
 $('#aShut').onclick = () => { if (confirm('Shut the toy down?')) toy.shutdown(); };
 $('#aSens').onchange = e => toy.setSensors(e.target.checked);
 $('#aAcc').onchange = e => { toy.sendAcc = e.target.checked; log('inf', 'ACC field ' + (e.target.checked ? 'on' : 'off')); };
+try { if (localStorage.toyAcc && $('#aAccVal')) $('#aAccVal').value = localStorage.toyAcc; } catch { /* storage unavailable */ }   // ACC remembered from the toy's stats
 $('#aAccVal').onchange = e => { if (toy) toy.acc = e.target.value.trim() || 'cust_spideyweb'; log('inf', 'ACC value ' + toy.acc); };
 $('#aRcDelay').onchange = e => { if (toy) toy.reconnectDelay = +e.target.value; };
 $('#aVolCtl').onchange = e => toy.setVolumeControl(e.target.checked);

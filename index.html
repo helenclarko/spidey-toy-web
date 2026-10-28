@@ -103,7 +103,38 @@
       <div class="panel"><strong>Put the toy to sleep</strong>
         <div class="btnrow"><button class="btn alt" id="btnSleep">Sleep</button><button class="btn alt" id="btnDisc">Disconnect</button></div>
       </div>
+      <div class="panel"><strong>First-time setup</strong>
+        <small>Use this if the toy was reset or has never been set up.</small>
+        <div class="btnrow"><button class="btn alt" id="btnSetup">Run setup</button></div>
+      </div>
       <p class="version" id="version">Spidey Toy web · unofficial fan revival · v0.1</p>
+    </div>
+  </section>
+
+  <!-- 4b. First-time setup (shown when the toy reports it is still in setup mode) -->
+  <section id="setup" class="screen">
+    <header class="top red">
+      <span class="spacer"></span><h2>Set up your toy</h2><span class="spacer"></span>
+    </header>
+    <div class="body hex">
+      <div class="panel" data-step="1"><strong>1. Wi-Fi</strong>
+        <small>This toy hasn't been set up yet. It needs your home Wi-Fi once to download its activities and create its profile. The password goes straight to the toy over Bluetooth.</small>
+        <label>Network name<input id="setupSsid" autocomplete="off"></label>
+        <label>Password<input id="setupPwd" type="password" autocomplete="off"></label>
+        <div class="btnrow"><button class="btn" id="setupWifi">Send to toy</button></div>
+      </div>
+      <div class="panel" data-step="2" hidden><strong>2. The toy sets itself up</strong>
+        <small>Keep the toy powered (plugged in is best) and close by. This can take several minutes. You do not need to press anything.</small>
+        <div class="btnrow"><button class="btn alt" id="setupAgain">Wrong Wi-Fi? Enter it again</button></div>
+      </div>
+      <div class="panel" data-step="3" hidden><strong>3. Your hero</strong>
+        <small>Pick the hero name and power, as in the original app.</small>
+        <div class="btnrow"><select id="setupA" aria-label="First word"></select><select id="setupB" aria-label="Second word"></select></div>
+        <div class="btnrow"><select id="setupPA" aria-label="First power word"></select><select id="setupPB" aria-label="Second power word"></select></div>
+        <div class="btnrow"><button class="btn" id="setupSave">Save name</button></div>
+      </div>
+      <p id="setupMsg" class="hint"></p>
+      <div class="btnrow"><button class="link" id="setupSkip">Skip setup</button><button class="btn" id="setupDone" hidden>Finish</button></div>
     </div>
   </section>
 
@@ -150,6 +181,7 @@
           <button class="btn alt" id="aStats">Toy stats (read-only)</button>
           <button class="btn alt" id="aSetup">Setup state (read-only)</button>
           <button class="btn alt" id="aPull">Pull profile from toy</button>
+          <button class="btn alt" id="aPull2">Pull profile (APK way: GET_PROFILE only)</button>
           <button class="btn alt" id="aScan">Scan Wi-Fi</button>
           <button class="btn alt" id="aUpd">Check for update</button>
           <button class="btn alt" id="aForget">Forget Wi-Fi</button>
