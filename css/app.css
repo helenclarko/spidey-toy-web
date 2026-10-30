@@ -100,3 +100,6 @@ pre#log .tx { color: #79c0ff; } pre#log .err { color: #ff7b72; } pre#log .inf { 
 
 .toast { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); background: #000e; color: #fff; padding: 10px 18px; border-radius: 999px; font-weight: 700; z-index: 9; max-width: 90vw; text-align: center; }
 @media (prefers-reduced-motion: reduce) { .screen.active, .act.playing { animation: none; } }
+
+/* make the hidden attribute win over component display rules (install buttons) */
+[hidden] { display: none !important; }

@@ -343,6 +343,25 @@ $('#aAccVal').onchange = e => { if (toy) toy.acc = e.target.value.trim() || 'cus
 $('#aRcDelay').onchange = e => { if (toy) toy.reconnectDelay = +e.target.value; };
 $('#aVolCtl').onchange = e => toy.setVolumeControl(e.target.checked);
 
+// --- installable web app (Chrome/Edge: shows an Install button once the browser says the page is installable) ---
+let installEvent = null;
+const standalone = () => matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches || navigator.standalone;
+function showInstall(on) { $('#installPanel').hidden = !on; $('#btnInstallSplash').hidden = !on; }
+async function doInstall() {
+  if (!installEvent) return;
+  installEvent.prompt();
+  const { outcome } = await installEvent.userChoice;
+  $('#installMsg').textContent = outcome === 'accepted' ? 'Installing...' : 'Install cancelled.';
+  installEvent = null; showInstall(false);
+}
+window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installEvent = e; if (!standalone()) showInstall(true); });
+window.addEventListener('appinstalled', () => { installEvent = null; showInstall(false); });
+$('#btnInstall').onclick = doInstall;
+$('#btnInstallSplash').onclick = doInstall;
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  navigator.serviceWorker.register('sw.js').catch((e) => console.warn('service worker not registered:', e.message));
+}
+
 loadFullOpTable().then(fillAdvanced);
 fillAdvanced();
 if (location.search.includes('advanced')) { /* dev shortcut: ?demo&advanced */ }

@@ -188,7 +188,7 @@ export class Toy extends EventTarget {
         const s = td.decode(dv);
         if (s && s !== this._pollLast) {
           this._pollLast = s;
-          if (n++ < 400) this.emit('diag', 'poll read: ' + JSON.stringify(s));
+          if (n++ < 24) this.emit('diag', 'poll read: ' + JSON.stringify(s) + (n === 24 ? '  (further poll reads not logged)' : ''));
           this._onNotify({ target: { value: dv } });
         }
       } catch (e) { if (n++ < 5) this.emit('diag', 'poll read failed: ' + e.message); }
@@ -294,12 +294,16 @@ export class Toy extends EventTarget {
   // answers GET_PROFILE after SET_TOY_TIME + SKIP_SETUP ("enter offline BLE mode"); otherwise it just replies CURRENT_ACTIVITY.
   // The full profile arrives as UPDATE_PROFILE (63), a trimmed one as UPDATE_SKIMMED_PROFILE (109); it takes ~13 s.
   async pullProfile() {
-    const d = new Date(), p = n => String(n).padStart(2, '0');
-    await this.send(113, `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`);
-    await new Promise(r => setTimeout(r, 500));
-    await this.send(78, '');
-    await new Promise(r => setTimeout(r, 2000));
-    await this.send(105, '');
+    if (this._pulling) return;   // repeated presses used to queue overlapping runs (seen in an Android log)
+    this._pulling = true;
+    try {
+      const d = new Date(), p = n => String(n).padStart(2, '0');
+      await this.send(113, `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`);
+      await new Promise(r => setTimeout(r, 500));
+      await this.send(78, '');
+      await new Promise(r => setTimeout(r, 2000));
+      await this.send(105, '');
+    } finally { this._pulling = false; }
   }
   sleep() { return this.send('SLEEP_TOY', ''); }
   shutdown() { return this.send('SHUTDOWN_TOY', ''); }

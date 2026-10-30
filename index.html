@@ -6,6 +6,11 @@
 <meta name="theme-color" content="#9B060C">
 <title>Spidey Toy</title>
 <link rel="icon" href="artwork/icon.svg">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Spidey Toy">
 <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
@@ -23,6 +28,7 @@
       <p class="err" id="splashErr" hidden></p>
       <button class="link" id="btnAny">Can't see your toy? Show all Bluetooth devices</button>
       <button class="link" id="btnDemo">Look around without a toy</button>
+      <button class="link" id="btnInstallSplash" hidden>Install this app</button>
       <img class="logo sphero" src="artwork/v3_sphero_logo.svg" alt="Sphero">
     </div>
   </section>
@@ -102,6 +108,11 @@
       </div>
       <div class="panel"><strong>Put the toy to sleep</strong>
         <div class="btnrow"><button class="btn alt" id="btnSleep">Sleep</button><button class="btn alt" id="btnDisc">Disconnect</button></div>
+      </div>
+      <div class="panel" id="installPanel" hidden><strong>Install as an app</strong>
+        <small>Adds Spidey Toy to your home screen or desktop and opens it full screen, without the browser bars.</small>
+        <div class="btnrow"><button class="btn alt" id="btnInstall">Install</button></div>
+        <small id="installMsg"></small>
       </div>
       <div class="panel"><strong>First-time setup</strong>
         <small>Use this if the toy was reset or has never been set up.</small>
